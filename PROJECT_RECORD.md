@@ -37,17 +37,12 @@ A distributed AI-Agent task execution system designed for Termux/Android environ
 - `start_ollama.sh` - Ollama daemon startup
 - `deploy_checklist.sh` - Deployment verification
 
-### Model Routing Strategy (Huawei Y6P Optimized)
+### Model Routing Strategy
 | Model | Task Types |
 |-------|-----------|
-| qwen2.5-coder-1.5b | code_generation, refactoring, bug_fix, planning, architecture, review |
-| qwen2-0.5b | translation, quick_cmd, classification |
-| tinyllama | boilerplate, file_ops, summary, chat, qa |
-
-### Memory Constraints
-- **Device**: Huawei Y6P (3GB RAM, ARMv7)
-- **Excluded Models**: deepseek-reasoner (8GB+), stablelm-zephyr-3b (1.9GB)
-- **Max RAM Usage**: 85% threshold to prevent OOM
+| qwen2.5-coder-1.5b | code_generation, refactoring, bug_fix |
+| deepseek-reasoner | planning, architecture, review |
+| tinyllama | boilerplate, file_ops, summary |
 
 ### Key Features
 - **Task Batching**: 30-second window with model affinity grouping

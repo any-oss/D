@@ -4,13 +4,12 @@ A distributed AI-Agent task execution system built for Termux/Android environmen
 
 ## Features
 
-- **Model Routing**: Automatic task routing to optimal AI models (qwen2.5-coder-1.5b, qwen2-0.5b, tinyllama)
+- **Model Routing**: Automatic task routing to optimal AI models (qwen2.5-coder-1.5b, deepseek-reasoner, tinyllama)
 - **Task Batching**: 30-second window with model affinity grouping for efficient processing
 - **Streaming Responses**: Real-time token streaming from Ollama for better UX
 - **Health Monitoring**: 5-second check intervals with automatic service recovery
 - **Resource Efficiency**: Model pre-warming on demand, automatic unloading after idle periods
 - **RAG Support**: Dual semantic search workers for retrieval-augmented generation
-- **Memory Optimized**: Configured for 3GB RAM devices (Huawei Y6P), excludes heavy models (>8GB)
 
 ## Quick Start
 
