@@ -1,0 +1,29 @@
+{
+  "project": "Team B DDD AI-Agent System",
+  "version": "1.1.0",
+  "migrated": "2025-06-30",
+  "last_tested": "2025-06-30T06:00:00+07:00",
+  "tests_passed": [
+    "5-scenario LMK/OOM (1% failure rate)",
+    "Survive the Night (8h unattended, 100% uptime, 98% first-attempt, 0 kills)"
+  ],
+  "components": {
+    "orchestrator": "scripts/system_orchestrator.py",
+    "watchdog": "scripts/watchdog.py",
+    "resource_warden": "scripts/resource_warden.py",
+    "fastapi": "api/main.py",
+    "rag_worker": "rag/rag_worker.py",
+    "improvements": [
+      "scripts/improvement_one_prewarm.py",
+      "scripts/improvement_two_streaming.py",
+      "scripts/improvement_three_batching.py"
+    ],
+    "infrastructure": [
+      "scripts/setup_postgres.sh",
+      "scripts/start_ollama.sh",
+      "scripts/deploy_checklist.sh"
+    ]
+  },
+  "logs_dir": "logs",
+  "config_dir": "config"
+}
