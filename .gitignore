@@ -1,10 +1,1 @@
-```gitignore
-# Python cache files
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Original rules preserved
-*.log
-```
+(docs/LOAD_BALANCER.md and router_lb.py are source files, and docs/.gitkeep is a placeholder file - no build artifacts, dependencies, or temp files in the changes)
