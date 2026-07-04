@@ -7,9 +7,9 @@ from collections import deque
 
 BATCH_WINDOW = 30
 MODEL_TASK_MAP = {
-    "qwen2.5-coder-1.5b": ["code_generation", "refactoring", "bug_fix"],
-    "deepseek-reasoner": ["planning", "architecture", "review"],
-    "tinyllama": ["boilerplate", "file_ops", "summary"],
+    "qwen2.5-coder-1.5b": ["code_generation", "refactoring", "bug_fix", "planning", "architecture", "review"],
+    "qwen2-0.5b":        ["translation", "quick_cmd", "classification"],
+    "tinyllama":         ["boilerplate", "file_ops", "summary", "chat", "qa"],
 }
 TASK_QUEUE = deque()
 
