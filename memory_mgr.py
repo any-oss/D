@@ -12,12 +12,16 @@ Features:
 import os
 import re
 import time
+import threading
 from typing import Optional, Dict, List, Tuple
 from dataclasses import dataclass, field
 from collections import OrderedDict
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 
@@ -40,6 +44,8 @@ class MemoryManager:
     - Total RAM: 3GB
     - Usable for models: 2.5GB (reserve 500MB for system)
     - Supports lazy loading and automatic eviction
+    
+    Thread-safe implementation using RLock for shared state protection.
     """
     
     def __init__(self, max_ram_mb: int = 2500, reserved_ram_mb: int = 500):
@@ -53,6 +59,9 @@ class MemoryManager:
         self.max_ram = max_ram_mb
         self.reserved_ram = reserved_ram_mb
         self.total_available = max_ram_mb + reserved_ram_mb
+        
+        # Thread safety lock for shared state
+        self._lock = threading.RLock()
         
         # Track loaded models (LRU order)
         self.loaded_models: OrderedDict[str, ModelInfo] = OrderedDict()
@@ -126,11 +135,12 @@ class MemoryManager:
             return 1024
     
     def get_used_ram_by_models(self) -> int:
-        """Calculate total RAM used by loaded models"""
-        return sum(info.ram_mb for info in self.loaded_models.values())
+        """Calculate total RAM used by loaded models (thread-safe)"""
+        with self._lock:
+            return sum(info.ram_mb for info in self.loaded_models.values())
     
     def get_current_usage_percent(self) -> float:
-        """Get current RAM usage percentage"""
+        """Get current RAM usage percentage (thread-safe)"""
         used = self.get_used_ram_by_models()
         return (used / self.max_ram) * 100 if self.max_ram > 0 else 0
     
@@ -182,42 +192,43 @@ class MemoryManager:
     
     def get_eviction_candidate(self) -> Optional[str]:
         """
-        Find the best model to evict using LRU strategy.
+        Find the best model to evict using LRU strategy (thread-safe).
         
         Returns:
             pool_type of model to evict, or None if no candidates
         """
-        if not self.loaded_models:
-            return None
-        
-        # Get least recently used model (first item in OrderedDict)
-        # Skip if only one model and it's 'fast' (pre-warmed)
-        for pool_type, info in self.loaded_models.items():
-            # Never evict 'fast' pool if it's the only one
-            if pool_type == 'fast' and len(self.loaded_models) == 1:
-                continue
+        with self._lock:
+            if not self.loaded_models:
+                return None
             
-            # Don't evict recently used (< 2 min)
-            idle_time = time.time() - info.last_used
-            if idle_time < 120:
-                continue
-            
-            logger.debug(
-                f"Eviction candidate: {pool_type} "
-                f"(idle {idle_time:.0f}s, {info.request_count} requests)"
-            )
-            return pool_type
-        
-        # If no idle models, return LRU anyway (under pressure)
-        for pool_type in self.loaded_models:
-            if pool_type != 'fast' or len(self.loaded_models) > 1:
+            # Get least recently used model (first item in OrderedDict)
+            # Skip if only one model and it's 'fast' (pre-warmed)
+            for pool_type, info in self.loaded_models.items():
+                # Never evict 'fast' pool if it's the only one
+                if pool_type == 'fast' and len(self.loaded_models) == 1:
+                    continue
+                
+                # Don't evict recently used (< 2 min)
+                idle_time = time.time() - info.last_used
+                if idle_time < 120:
+                    continue
+                
+                logger.debug(
+                    f"Eviction candidate: {pool_type} "
+                    f"(idle {idle_time:.0f}s, {info.request_count} requests)"
+                )
                 return pool_type
-        
-        return None
+            
+            # If no idle models, return LRU anyway (under pressure)
+            for pool_type in self.loaded_models:
+                if pool_type != 'fast' or len(self.loaded_models) > 1:
+                    return pool_type
+            
+            return None
     
     def evict_model(self, pool_type: str) -> bool:
         """
-        Evict a model from memory.
+        Evict a model from memory (thread-safe).
         
         Args:
             pool_type: Type of model to evict
@@ -225,25 +236,26 @@ class MemoryManager:
         Returns:
             True if eviction successful
         """
-        if pool_type not in self.loaded_models:
-            logger.warning(f"Model {pool_type} not loaded, cannot evict")
-            return False
-        
-        info = self.loaded_models.pop(pool_type)
-        freed_ram = info.ram_mb
-        
-        self.stats['evictions'] += 1
-        
-        logger.info(
-            f"Evicted {pool_type} ({info.model_name}), "
-            f"freed {freed_ram}MB RAM"
-        )
-        
-        return True
+        with self._lock:
+            if pool_type not in self.loaded_models:
+                logger.warning(f"Model {pool_type} not loaded, cannot evict")
+                return False
+            
+            info = self.loaded_models.pop(pool_type)
+            freed_ram = info.ram_mb
+            
+            self.stats['evictions'] += 1
+            
+            logger.info(
+                f"Evicted {pool_type} ({info.model_name}), "
+                f"freed {freed_ram}MB RAM"
+            )
+            
+            return True
     
     def register_model_load(self, pool_type: str, model_name: str):
         """
-        Register that a model has been loaded.
+        Register that a model has been loaded (thread-safe).
         
         Args:
             pool_type: Type of model pool
@@ -259,17 +271,18 @@ class MemoryManager:
             last_used=time.time()
         )
         
-        # Remove existing entry if present (re-registering)
-        if pool_type in self.loaded_models:
-            self.loaded_models.pop(pool_type)
-        
-        self.loaded_models[pool_type] = info
-        self.stats['loads'] += 1
-        
-        # Track peak usage
-        current_used = self.get_used_ram_by_models()
-        if current_used > self.stats['peak_ram']:
-            self.stats['peak_ram'] = current_used
+        with self._lock:
+            # Remove existing entry if present (re-registering)
+            if pool_type in self.loaded_models:
+                self.loaded_models.pop(pool_type)
+            
+            self.loaded_models[pool_type] = info
+            self.stats['loads'] += 1
+            
+            # Track peak usage
+            current_used = sum(m.ram_mb for m in self.loaded_models.values())
+            if current_used > self.stats['peak_ram']:
+                self.stats['peak_ram'] = current_used
         
         logger.info(
             f"Loaded {pool_type} ({model_name}), "
@@ -278,21 +291,22 @@ class MemoryManager:
     
     def touch_model(self, pool_type: str):
         """
-        Update last-used timestamp for a model.
+        Update last-used timestamp for a model (thread-safe).
         
         Args:
             pool_type: Type of model accessed
         """
-        if pool_type in self.loaded_models:
-            self.loaded_models[pool_type].last_used = time.time()
-            self.loaded_models[pool_type].request_count += 1
-            
-            # Move to end of OrderedDict (most recently used)
-            self.loaded_models.move_to_end(pool_type)
+        with self._lock:
+            if pool_type in self.loaded_models:
+                self.loaded_models[pool_type].last_used = time.time()
+                self.loaded_models[pool_type].request_count += 1
+                
+                # Move to end of OrderedDict (most recently used)
+                self.loaded_models.move_to_end(pool_type)
     
     def ensure_memory_for(self, pool_type: str) -> Tuple[bool, Optional[str]]:
         """
-        Ensure there's enough memory for a model, evicting if necessary.
+        Ensure there's enough memory for a model, evicting if necessary (thread-safe).
         
         Args:
             pool_type: Type of model to prepare for
@@ -360,29 +374,29 @@ class MemoryManager:
         """Print formatted memory status to console"""
         status = self.get_status()
         
-        print("\n" + "="*50)
-        print("📊 MEMORY MANAGER STATUS")
-        print("="*50)
-        print(f"Device RAM:      {status['total_device_ram_mb']}MB")
-        print(f"Available:       {status['available_ram_mb']}MB")
-        print(f"Max for Models:  {status['max_model_ram_mb']}MB")
-        print(f"Reserved:        {status['reserved_ram_mb']}MB")
-        print(f"Used by Models:  {status['used_by_models_mb']}MB ({status['usage_percent']:.1f}%)")
-        print("-"*50)
+        logger.info("\n" + "="*50)
+        logger.info("📊 MEMORY MANAGER STATUS")
+        logger.info("="*50)
+        logger.info(f"Device RAM:      {status['total_device_ram_mb']}MB")
+        logger.info(f"Available:       {status['available_ram_mb']}MB")
+        logger.info(f"Max for Models:  {status['max_model_ram_mb']}MB")
+        logger.info(f"Reserved:        {status['reserved_ram_mb']}MB")
+        logger.info(f"Used by Models:  {status['used_by_models_mb']}MB ({status['usage_percent']:.1f}%)")
+        logger.info("-"*50)
         
         if status['loaded_models']:
-            print("Loaded Models:")
+            logger.info("Loaded Models:")
             for pool_type, info in status['loaded_models'].items():
-                print(f"  • {pool_type.upper()}: {info['model']}")
-                print(f"    RAM: {info['ram_mb']}MB | Idle: {info['idle_seconds']}s | Requests: {info['requests']}")
+                logger.info(f"  • {pool_type.upper()}: {info['model']}")
+                logger.info(f"    RAM: {info['ram_mb']}MB | Idle: {info['idle_seconds']}s | Requests: {info['requests']}")
         else:
-            print("No models currently loaded")
+            logger.info("No models currently loaded")
         
-        print("-"*50)
-        print(f"Stats: {status['stats']['loads']} loads, "
+        logger.info("-"*50)
+        logger.info(f"Stats: {status['stats']['loads']} loads, "
               f"{status['stats']['evictions']} evictions, "
               f"{status['stats']['oom_prevented']} OOM prevented")
-        print("="*50 + "\n")
+        logger.info("="*50 + "\n")
 
 
 # Singleton instance
@@ -399,7 +413,7 @@ def get_memory_manager() -> MemoryManager:
 
 if __name__ == "__main__":
     # Test the memory manager
-    print("Testing MemoryManager on Huawei Y6P...\n")
+    logger.info("Testing MemoryManager on Huawei Y6P...\n")
     
     mgr = MemoryManager()
     
@@ -407,25 +421,25 @@ if __name__ == "__main__":
     mgr.print_status()
     
     # Simulate loading models
-    print("\n📥 Loading FAST model (TinyLlama)...")
+    logger.info("\n📥 Loading FAST model (TinyLlama)...")
     mgr.register_model_load('fast', 'tinyllama-1.1b-q4_k_m')
     mgr.print_status()
     
-    print("\n📥 Loading CODE model (Qwen Coder)...")
+    logger.info("\n📥 Loading CODE model (Qwen Coder)...")
     success, evicted = mgr.ensure_memory_for('code')
     if success:
         if evicted:
-            print(f"  (Evicted {evicted} to make room)")
+            logger.info(f"  (Evicted {evicted} to make room)")
         mgr.register_model_load('code', 'qwen2.5-coder-1.5b-q4_k_m')
     mgr.print_status()
     
     # Simulate access
-    print("\n👆 Accessing CODE model...")
+    logger.info("\n👆 Accessing CODE model...")
     mgr.touch_model('code')
     mgr.print_status()
     
     # Test eviction
-    print("\n🗑️  Simulating memory pressure...")
-    print("Checking if we can load another large model...")
+    logger.info("\n🗑️  Simulating memory pressure...")
+    logger.info("Checking if we can load another large model...")
     can_load = mgr.can_load_model('code')
-    print(f"Can load another CODE model: {can_load}")
+    logger.info(f"Can load another CODE model: {can_load}")
