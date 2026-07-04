@@ -20,9 +20,9 @@ app = FastAPI(
 )
 
 MODEL_TASK_MAP: dict[str, list[str]] = {
-    "qwen2.5-coder-1.5b": ["code_generation", "refactoring", "bug_fix"],
-    "deepseek-reasoner":  ["planning", "architecture", "review"],
-    "tinyllama":           ["boilerplate", "file_ops", "summary"],
+    "qwen2.5-coder-1.5b": ["code_generation", "refactoring", "bug_fix", "planning", "architecture", "review"],
+    "qwen2-0.5b":        ["translation", "quick_cmd", "classification"],
+    "tinyllama":         ["boilerplate", "file_ops", "summary", "chat", "qa"],
 }
 
 BATCH_WINDOW: float = 30.0
@@ -56,8 +56,8 @@ async def _startup() -> None:
 
 AGENTS: list[dict[str, str]] = [
     {"name": "claude-code",       "status": "online"},
-    {"name": "deepseek-coder",    "status": "unloaded"},
-    {"name": "deepseek-reasoner", "status": "unloaded"},
+    {"name": "qwen-coder",      "status": "unloaded"},
+    {"name": "qwen-fast",       "status": "unloaded"},
     {"name": "tinyllama",         "status": "unloaded"},
     {"name": "codex",             "status": "online"},
 ]
