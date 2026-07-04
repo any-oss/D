@@ -20,9 +20,9 @@ app = FastAPI(
 )
 
 MODEL_TASK_MAP: dict[str, list[str]] = {
-    "qwen2.5-coder-1.5b": ["code_generation", "refactoring", "bug_fix"],
-    "deepseek-reasoner":  ["planning", "architecture", "review"],
-    "tinyllama":           ["boilerplate", "file_ops", "summary"],
+    "qwen2.5-coder-1.5b": ["code_generation", "refactoring", "bug_fix", "planning", "architecture", "review"],
+    "qwen2-0.5b":        ["translation", "quick_cmd", "classification"],
+    "tinyllama":         ["boilerplate", "file_ops", "summary", "chat", "qa"],
 }
 
 BATCH_WINDOW: float = 30.0
@@ -55,11 +55,11 @@ async def _startup() -> None:
     asyncio.create_task(_process_batch())
 
 AGENTS: list[dict[str, str]] = [
-    {"name": "claude-code",       "status": "online"},
-    {"name": "deepseek-coder",    "status": "unloaded"},
-    {"name": "deepseek-reasoner", "status": "unloaded"},
-    {"name": "tinyllama",         "status": "unloaded"},
-    {"name": "codex",             "status": "online"},
+    {"name": "claude-code",       "status": "online"},  # Qwen2.5-Coder-1.5B (Planning/Coding)
+    {"name": "codex",             "status": "online"},  # Qwen2.5-Coder-1.5B (Review/Security)
+    {"name": "qwen-coder",        "status": "unloaded"},# Qwen2.5-Coder-1.5B (Code Generation)
+    {"name": "qwen-fast",         "status": "unloaded"},# Qwen2-0.5B (Translation/Quick)
+    {"name": "tinyllama",         "status": "unloaded"},# TinyLlama-1.1B (Chat/QA)
 ]
 
 @app.get("/health")
