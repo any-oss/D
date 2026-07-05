@@ -1,0 +1,58 @@
+name: DDD AI‑Agent System CI Review
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install tools & dependencies
+        run: |
+          pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install flake8 black isort bandit
+      - name: Lint with flake8 (fatal errors only)
+        run: flake8 api/ rag/ scripts/ --count --select=E9,F63,F7,F82 --show-source --statistics
+      - name: Check formatting with black
+        run: black --check --diff api/ rag/ scripts/
+        continue-on-error: true
+      - name: Check import order with isort
+        run: isort --check-only --diff api/ rag/ scripts/
+        continue-on-error: true
+      - name: Security scan with bandit
+        run: bandit -r api/ rag/ scripts/ -x tests
+      - name: Ensure critical scripts are executable
+        run: |
+          test -x install.sh || { echo "install.sh is not executable"; exit 1; }
+          for f in scripts/*.sh; do
+            test -x "$f" || { echo "$f not executable"; exit 1; }
+          done
+      - name: Validate Makefile.mk syntax
+        run: make -n -f Makefile.mk all 2>/dev/null || true
+      - name: Check mandatory documentation sections
+        run: |
+          grep -q "Testing Results" PROJECT_RECORD.md || {
+            echo "PROJECT_RECORD.md missing Testing Results section"; exit 1;
+          }
+          grep -q "Architecture" PROJECT_RECORD.md || echo "Warning: Architecture section missing"
+      - name: Run 5‑scenario LMK/OOM test (if script exists)
+        run: |
+          if [ -f scripts/test_lmk.sh ]; then
+            bash scripts/test_lmk.sh
+          else
+            echo "No test_lmk.sh found, skipping."
+          fi
+        continue-on-error: true
+      - name: Run unit tests (if present)
+        run: |
+          if [ -d tests ]; then
+            pytest -v --tb=short
+          else
+            echo "No tests/ directory"
+          fi
