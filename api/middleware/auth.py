@@ -24,6 +24,7 @@ security = HTTPBearer(auto_error=False)
 
 class AuthenticationError(Exception):
     """Custom exception for authentication failures."""
+
     pass
 
 
@@ -37,7 +38,7 @@ def create_access_token(data: dict, expires_delta: Optional[int] = None) -> str:
     to_encode = data.copy()
     expire = int(time.time()) + (expires_delta or TOKEN_EXPIRE_MINUTES * 60)
     to_encode.update({"exp": expire})
-    
+
     try:
         encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
         return encoded_jwt
@@ -67,7 +68,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 async def get_api_key_from_request(request: Request) -> Optional[str]:
     """Extract API key from request headers."""
     auth_header = request.headers.get("Authorization")
-    
+
     if auth_header and auth_header.startswith("Bearer "):
         token = auth_header.split(" ", 1)[1]
         # Try to decode as JWT first
@@ -76,7 +77,7 @@ async def get_api_key_from_request(request: Request) -> Optional[str]:
             return payload.get("api_key")
         # Fall back to direct API key
         return token
-    
+
     # Check for X-API-Key header
     return request.headers.get("X-API-Key")
 
@@ -84,10 +85,10 @@ async def get_api_key_from_request(request: Request) -> Optional[str]:
 async def authenticate_request(request: Request) -> bool:
     """Authenticate an incoming request."""
     api_key = await get_api_key_from_request(request)
-    
+
     if not api_key:
         return False
-    
+
     return verify_api_key(api_key)
 
 
@@ -95,20 +96,20 @@ async def auth_middleware(request: Request, call_next):
     """FastAPI middleware for authentication."""
     # Skip authentication for health checks and docs
     skip_paths = ["/health", "/docs", "/redoc", "/openapi.json"]
-    
+
     if request.url.path in skip_paths:
         return await call_next(request)
-    
+
     # Authenticate the request
     is_authenticated = await authenticate_request(request)
-    
+
     if not is_authenticated:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or missing API key",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Proceed with the request
     response = await call_next(request)
     return response

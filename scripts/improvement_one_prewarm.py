@@ -2,6 +2,7 @@
 """
 Improvement 1: Model Pre‑Warmer with Persistent Cache
 """
+
 import subprocess, time
 
 CONFIG = {
@@ -11,30 +12,44 @@ CONFIG = {
 }
 STATE = {"loaded": False, "request_count": 0, "last_request_time": 0.0}
 
+
 def load_model():
-    subprocess.run(["ollama", "run", CONFIG["model"], ""],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
+    subprocess.run(
+        ["ollama", "run", CONFIG["model"], ""],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        timeout=30,
+    )
     STATE["loaded"] = True
     STATE["last_request_time"] = time.time()
 
+
 def unload_model():
-    subprocess.run(["ollama", "stop", CONFIG["model"]],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(
+        ["ollama", "stop", CONFIG["model"]],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
     STATE["loaded"] = False
     STATE["request_count"] = 0
+
 
 def should_keep_warm():
     if not STATE["loaded"]:
         return False
     if STATE["request_count"] < CONFIG["min_requests_before_unload"]:
         return True
-    return (time.time() - STATE["last_request_time"]) < (CONFIG["max_idle_minutes"] * 60)
+    return (time.time() - STATE["last_request_time"]) < (
+        CONFIG["max_idle_minutes"] * 60
+    )
+
 
 def handle_request():
     STATE["request_count"] += 1
     STATE["last_request_time"] = time.time()
     if not STATE["loaded"]:
         load_model()
+
 
 def main_loop():
     while True:
@@ -43,6 +58,7 @@ def main_loop():
         elif not should_keep_warm() and STATE["loaded"]:
             unload_model()
         time.sleep(10)
+
 
 if __name__ == "__main__":
     main_loop()

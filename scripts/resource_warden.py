@@ -23,7 +23,7 @@ CHECK_INTERVAL = 5.0
 logging.basicConfig(
     filename=LOG_FILE,
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s"
+    format="%(asctime)s [%(levelname)s] %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -39,24 +39,24 @@ def get_system_metrics():
     return {
         "cpu_percent": psutil.cpu_percent(interval=1),
         "memory_percent": psutil.virtual_memory().percent,
-        "disk_percent": psutil.disk_usage('/').percent,
-        "timestamp": time.time()
+        "disk_percent": psutil.disk_usage("/").percent,
+        "timestamp": time.time(),
     }
 
 
 def check_thresholds(metrics):
     """Check if any resource exceeds thresholds."""
     alerts = []
-    
+
     if metrics["cpu_percent"] > CPU_THRESHOLD:
         alerts.append(f"CPU usage high: {metrics['cpu_percent']:.1f}%")
-    
+
     if metrics["memory_percent"] > MEMORY_THRESHOLD:
         alerts.append(f"Memory usage high: {metrics['memory_percent']:.1f}%")
-    
+
     if metrics["disk_percent"] > DISK_THRESHOLD:
         alerts.append(f"Disk usage high: {metrics['disk_percent']:.1f}%")
-    
+
     return alerts
 
 
@@ -66,7 +66,7 @@ def send_to_watchdog(message):
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         sock.settimeout(2.0)
         sock.connect(SOCKET_PATH)
-        sock.sendall(json.dumps(message).encode('utf-8'))
+        sock.sendall(json.dumps(message).encode("utf-8"))
         sock.close()
         return True
     except (socket.error, ConnectionRefusedError) as e:
@@ -78,37 +78,39 @@ def run_daemon():
     """Main daemon loop."""
     ensure_log_dir()
     logger.info("Resource Warden started")
-    
+
     # Remove stale socket if exists
     if os.path.exists(SOCKET_PATH):
         try:
             os.unlink(SOCKET_PATH)
         except OSError:
             pass
-    
+
     while True:
         try:
             metrics = get_system_metrics()
             alerts = check_thresholds(metrics)
-            
+
             if alerts:
                 for alert in alerts:
                     logger.warning(alert)
-                
+
                 # Notify watchdog about resource issues
                 message = {
                     "type": "resource_alert",
                     "metrics": metrics,
-                    "alerts": alerts
+                    "alerts": alerts,
                 }
                 send_to_watchdog(message)
             else:
-                logger.debug(f"Resources OK - CPU: {metrics['cpu_percent']:.1f}%, "
-                           f"Mem: {metrics['memory_percent']:.1f}%, "
-                           f"Disk: {metrics['disk_percent']:.1f}%")
-            
+                logger.debug(
+                    f"Resources OK - CPU: {metrics['cpu_percent']:.1f}%, "
+                    f"Mem: {metrics['memory_percent']:.1f}%, "
+                    f"Disk: {metrics['disk_percent']:.1f}%"
+                )
+
             time.sleep(CHECK_INTERVAL)
-            
+
         except KeyboardInterrupt:
             logger.info("Resource Warden stopped by user")
             break

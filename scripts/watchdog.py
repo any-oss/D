@@ -12,13 +12,17 @@ PREWARM_MODEL = "qwen2.5-coder-1.5b"
 MIN_REQUESTS_BEFORE_UNLOAD = 3
 MAX_IDLE_MINUTES = 10
 
-logging.basicConfig(filename=LOG_FILE, level=logging.INFO,
-                    format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 _request_count = 0
 _last_request_time = 0.0
 _model_loaded = False
+
 
 def _daemonize():
     if os.fork() > 0:
@@ -26,6 +30,7 @@ def _daemonize():
     os.setsid()
     if os.fork() > 0:
         sys.exit(0)
+
 
 def _start_socket():
     if os.path.exists(SOCKET_PATH):
@@ -35,21 +40,31 @@ def _start_socket():
     server.listen(5)
     return server
 
+
 def _load_model():
     global _model_loaded
     if not _model_loaded:
-        subprocess.run(["ollama", "run", PREWARM_MODEL, ""],
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
+        subprocess.run(
+            ["ollama", "run", PREWARM_MODEL, ""],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=30,
+        )
         _model_loaded = True
         logger.info(f"Pre‑warmed model '{PREWARM_MODEL}'.")
+
 
 def _unload_model():
     global _model_loaded
     if _model_loaded:
-        subprocess.run(["ollama", "stop", PREWARM_MODEL],
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(
+            ["ollama", "stop", PREWARM_MODEL],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
         _model_loaded = False
         logger.info(f"Unloaded model '{PREWARM_MODEL}'.")
+
 
 def _handle_cmd(cmd):
     global _request_count, _last_request_time
@@ -71,6 +86,7 @@ def _handle_cmd(cmd):
         return {"ok": True, "model_loaded": _model_loaded}
     return {"ok": False, "error": f"unknown command '{action}'"}
 
+
 def _prewarm_policy():
     if not _model_loaded:
         return
@@ -79,6 +95,7 @@ def _prewarm_policy():
     idle_sec = time.time() - _last_request_time if _last_request_time > 0 else 0
     if idle_sec > (MAX_IDLE_MINUTES * 60):
         _unload_model()
+
 
 def _main():
     global _last_request_time
@@ -100,6 +117,7 @@ def _main():
         except socket.timeout:
             pass
         _prewarm_policy()
+
 
 if __name__ == "__main__":
     _main()
