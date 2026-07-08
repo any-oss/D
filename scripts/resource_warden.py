@@ -14,14 +14,16 @@ import psutil
 from pathlib import Path
 
 SOCKET_PATH = "/tmp/warden.sock"
-LOG_FILE = os.path.expanduser("~/team_b_deploy/logs/resource_warden.log")
+LOG_DIR = Path(os.path.expanduser("~/team_b_deploy/logs"))
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_FILE = LOG_DIR / "resource_warden.log"
 CPU_THRESHOLD = 85.0
 MEMORY_THRESHOLD = 90.0
 DISK_THRESHOLD = 95.0
 CHECK_INTERVAL = 5.0
 
 logging.basicConfig(
-    filename=LOG_FILE,
+    filename=str(LOG_FILE),
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
