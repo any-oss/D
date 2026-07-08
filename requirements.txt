@@ -1,0 +1,43 @@
+# Web Framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.2
+pydantic==2.10.4
+pydantic-settings==2.7.1
+python-dotenv==1.0.1
+
+# Database
+psycopg2-binary==2.9.10
+sqlalchemy==2.0.37
+alembic==1.14.1
+
+# Security
+python-jose[cryptography]==3.4.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.1
+
+# RAG & ML
+sentence-transformers==3.3.1
+chromadb==0.6.3
+
+# Monitoring & Observability
+prometheus-client==0.21.1
+psutil==6.1.1
+
+# HTTP Client
+httpx==0.28.1
+aiohttp==3.11.11
+
+# Testing
+pytest==8.3.4
+pytest-asyncio==0.25.2
+pytest-cov==6.0.0
+
+# Development & Code Quality
+black==24.10.0
+flake8==7.1.1
+mypy==1.14.1
+isort==5.13.2
+
+# Utilities
+python-multipart==0.0.20
+tenacity==9.0.0

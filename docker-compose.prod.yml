@@ -1,0 +1,102 @@
+# Production Docker Compose Configuration
+# Includes: API, PostgreSQL, Prometheus, and monitoring stack
+
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: skills-rag-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - DATABASE_URL=postgresql://skills_user:${DB_PASSWORD:-changeme}@db:5432/skills_rag
+      - API_KEY=${API_KEY:-change-this-to-a-secure-key-min-16-chars}
+      - JWT_SECRET=${JWT_SECRET:-change-this-to-a-secure-secret-min-32-chars}
+      - LOG_FORMAT=json
+      - LOG_LEVEL=INFO
+      - PROMETHEUS_ENABLED=true
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - skills-network
+    volumes:
+      - ./models:/app/models
+      - ./logs:/app/logs
+
+  db:
+    image: postgres:15-alpine
+    container_name: skills-rag-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=skills_user
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-changeme}
+      - POSTGRES_DB=skills_rag
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U skills_user -d skills_rag"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - skills-network
+    ports:
+      - "5432:5432"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: skills-rag-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - skills-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: skills-rag-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - skills-network
+
+networks:
+  skills-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
