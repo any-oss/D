@@ -36,14 +36,14 @@ def verify_api_key(api_key: str) -> bool:
 
 def create_access_token(data: dict, expires_delta: Optional[int] = None) -> str:
     """Create a JWT access token.
-    
+
     Args:
         data: Payload data to encode in the token
         expires_delta: Token expiration time in seconds (optional)
-    
+
     Returns:
         Encoded JWT token string
-    
+
     Raises:
         AuthenticationError: If token creation fails
     """
@@ -60,10 +60,10 @@ def create_access_token(data: dict, expires_delta: Optional[int] = None) -> str:
 
 def decode_access_token(token: str) -> Optional[dict]:
     """Decode and validate a JWT access token.
-    
+
     Args:
         token: JWT token string to decode
-    
+
     Returns:
         Decoded payload dictionary or None if invalid
     """
@@ -76,10 +76,10 @@ def decode_access_token(token: str) -> Optional[dict]:
 
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt.
-    
+
     Args:
         password: Plain text password
-    
+
     Returns:
         Hashed password string
     """
@@ -88,11 +88,11 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash.
-    
+
     Args:
         plain_password: Plain text password
         hashed_password: Hashed password to verify against
-    
+
     Returns:
         True if password matches, False otherwise
     """
@@ -101,12 +101,12 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 async def get_api_key_from_request(request: Request) -> Optional[str]:
     """Extract API key from request headers.
-    
+
     Checks Authorization header (Bearer token or JWT) and X-API-Key header.
-    
+
     Args:
         request: FastAPI request object
-    
+
     Returns:
         API key string or None if not found
     """
@@ -127,10 +127,10 @@ async def get_api_key_from_request(request: Request) -> Optional[str]:
 
 async def authenticate_request(request: Request) -> bool:
     """Authenticate an incoming request.
-    
+
     Args:
         request: FastAPI request object
-    
+
     Returns:
         True if authenticated, False otherwise
     """
@@ -144,16 +144,16 @@ async def authenticate_request(request: Request) -> bool:
 
 async def auth_middleware(request: Request, call_next):
     """FastAPI middleware for authentication.
-    
+
     Skips authentication for health checks and documentation endpoints.
-    
+
     Args:
         request: FastAPI request object
         call_next: Next middleware/handler in the chain
-    
+
     Returns:
         Response from next handler
-    
+
     Raises:
         HTTPException: If authentication fails (401 Unauthorized)
     """

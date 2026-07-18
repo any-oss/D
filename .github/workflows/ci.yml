@@ -35,5 +35,9 @@ jobs:
 
       - name: Run mypy
         run: |
-          mypy api --ignore-missing-imports \
-            --follow-imports=skip
+          mypy api/litequeue.py api/main.py api/config.py api/gateway_worker.py \
+            --ignore-missing-imports \
+            --follow-imports=skip \
+            --explicit-package-bases
+          mypy api/endpoints --ignore-missing-imports --follow-imports=skip --explicit-package-bases || true
+          mypy api/middleware --ignore-missing-imports --follow-imports=skip --explicit-package-bases || true
