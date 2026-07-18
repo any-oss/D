@@ -41,8 +41,11 @@ class Settings(BaseSettings):
     
     # RAG & Models
     MODEL_PATH: str = Field(default="./models", description="Path to model files")
+    LLAMA_MODEL: str = Field(default="Qwen2.5-0.5b-instruct-q4_k_m.gguf", description="LLaMA model file")
     EMBEDDING_MODEL: str = Field(default="all-MiniLM-L6-v2", description="Embedding model name")
     MAX_CONTEXT_LENGTH: int = Field(default=4096, ge=512, description="Max context length")
+    LLAMA_SERVER_HOST: str = Field(default="localhost", description="llama-server host")
+    LLAMA_SERVER_PORT: int = Field(default=8080, ge=1, le=65535, description="llama-server port")
     
     # Resource Monitoring
     MEMORY_THRESHOLD_PERCENT: float = Field(default=85.0, ge=0, le=100, description="Memory threshold %")
