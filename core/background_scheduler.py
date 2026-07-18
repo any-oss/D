@@ -120,7 +120,7 @@ class BackgroundScheduler:
         task_id: str, 
         func: Callable, 
         args: tuple = (), 
-        kwargs: dict = None,
+        kwargs: Optional[Dict[str, Any]] = None,
         priority: TaskPriority = TaskPriority.NORMAL,
         delay_seconds: float = 0
     ):
