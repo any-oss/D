@@ -1,25 +1,29 @@
 #!/usr/bin/env python3
 """
 main.py — FastAPI application for Team B v1.3.0.
-Features: 
-- Health & router status, task batching, streaming generation with llama.cpp (llama-server)
-- Multi-agent system with sub-agents (skills, memory, heartbeat, soul, tools)
-- Universal Remote Control for zero-shot planning and execution
-- MCP server integration with isolated connection pools
-- Background task scheduler with lazy loading
+
+Features:
+    - Health & router status, task batching, streaming generation
+      with llama.cpp (llama-server)
+    - Multi-agent system with sub-agents (skills, memory, heartbeat,
+      soul, tools)
+    - Universal Remote Control for zero-shot planning and execution
+    - MCP server integration with isolated connection pools
+    - Background task scheduler with lazy loading
+
 Uses Qwen2.5-0.5b-instruct-q4_k_m.gguf model for optimized performance.
 """
 
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.responses import StreamingResponse, JSONResponse
 import httpx
 import json
 import time
 import asyncio
 from collections import deque
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 
 from core.config import settings
 from api.endpoints import agents as agents_router
@@ -27,14 +31,20 @@ from api.endpoints import agents as agents_router
 app = FastAPI(
     title="Team B AI-Agent System",
     version="1.3.0",
-    description="DDD AI‑Agent Task Execution & Coordination System with llama.cpp and Multi-Agent Architecture",
+    description=(
+        "DDD AI-Agent Task Execution & Coordination System with "
+        "llama.cpp and Multi-Agent Architecture"
+    ),
 )
 
 # Include routers
 app.include_router(agents_router.router, prefix="/api/v1", tags=["agents"])
 
 # Model configuration for llama.cpp (llama-server)
-LLAMA_SERVER_URL = f"http://{settings.LLAMA_SERVER_HOST}:{settings.LLAMA_SERVER_PORT}"
+LLAMA_SERVER_URL = (
+    f"http://{settings.LLAMA_SERVER_HOST}:"
+    f"{settings.LLAMA_SERVER_PORT}"
+)
 DEFAULT_MODEL = settings.LLAMA_MODEL
 
 MODEL_TASK_MAP: Dict[str, List[str]] = {
@@ -61,13 +71,13 @@ BATCH_WINDOW: float = 30.0
 
 class TaskQueue:
     """Thread-safe task queue with batching support."""
-    
+
     def __init__(self, batch_window: float = 30.0):
         self._queue: deque[Dict[str, Any]] = deque()
         self._batch_window = batch_window
         self._last_batch_time = time.time()
         self._lock = asyncio.Lock()
-    
+
     async def add_task(self, task_type: str, payload: str) -> int:
         """Add a task to the queue."""
         async with self._lock:
@@ -77,7 +87,7 @@ class TaskQueue:
                 "arrived": time.time()
             })
             return len(self._queue)
-    
+
     async def process_batches(self) -> None:
         """Process batched tasks from the queue."""
         while True:
@@ -93,12 +103,12 @@ class TaskQueue:
                         print(f"[BATCH] {model} ← {len(tasks)} tasks")
                     self._last_batch_time = time.time()
             await asyncio.sleep(2)
-    
+
     @staticmethod
     def _best_model(task_type: str) -> str:
         """Return the best model for a given task type."""
         return DEFAULT_MODEL
-    
+
     @property
     def size(self) -> int:
         """Get current queue size."""
@@ -110,8 +120,8 @@ task_queue = TaskQueue(batch_window=BATCH_WINDOW)
 
 
 AGENTS: List[Dict[str, str]] = [
-    {"name": "qwen-coder", "status": "online"},  # Qwen2.5-0.5b-instruct (All tasks)
-    {"name": "qwen-fast", "status": "online"},  # Qwen2.5-0.5b-instruct (Quick tasks)
+    {"name": "qwen-coder", "status": "online"},  # All tasks
+    {"name": "qwen-fast", "status": "online"},  # Quick tasks
 ]
 
 
@@ -166,7 +176,7 @@ async def generate(prompt: str, model: str = DEFAULT_MODEL):
             "repeat_penalty": 1.1,
             "stream": True,
         }
-        
+
         async with httpx.AsyncClient(timeout=120.0) as client:
             try:
                 async with client.stream(
@@ -188,7 +198,7 @@ async def generate(prompt: str, model: str = DEFAULT_MODEL):
                                 token: str = chunk.get("content", "")
                                 if token:
                                     yield token
-                                if chunk.get("stop", False) or chunk.get("done", False):
+                                if chunk.get("stop") or chunk.get("done"):
                                     break
                             except json.JSONDecodeError:
                                 continue

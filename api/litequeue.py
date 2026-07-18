@@ -12,7 +12,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Generator
 
 # Use unified config storage path
-DB_PATH = str(Path(__file__).resolve().parent.parent / "storage" / "db" / "job_queue.db")
+DB_DIR = Path(__file__).resolve().parent.parent / "storage" / "db"
+DB_PATH = str(DB_DIR / "job_queue.db")
 
 
 def init_queue() -> None:
@@ -46,7 +47,6 @@ def init_queue() -> None:
 
 
 @contextmanager
-
 def get_db() -> Generator[sqlite3.Connection, None, None]:
     """Get database connection with WAL mode enabled.
 
@@ -112,7 +112,9 @@ def dequeue(topic: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def complete_job(job_id: int, success: bool, error: Optional[str] = None) -> None:
+def complete_job(
+    job_id: int, success: bool, error: Optional[str] = None
+) -> None:
     """Mark job as done or failed.
 
     Args:
@@ -124,14 +126,16 @@ def complete_job(job_id: int, success: bool, error: Optional[str] = None) -> Non
         cur = conn.cursor()
         if success:
             cur.execute(
-                "UPDATE jobs SET status = 'completed', processed_at = strftime('%s', 'now') WHERE id = ?",
+                "UPDATE jobs SET status = 'completed',"
+                " processed_at = strftime('%s', 'now')"
+                " WHERE id = ?",
                 (job_id,),
             )
         else:
             cur.execute(
-                """UPDATE jobs SET status = 'failed',
-                   error_msg = ?, processed_at = strftime('%s', 'now'),
-                   retry_count = retry_count + 1 WHERE id = ?""",
+                "UPDATE jobs SET status = 'failed',"
+                " error_msg = ?, processed_at = strftime('%s', 'now'),"
+                " retry_count = retry_count + 1 WHERE id = ?",
                 (error, job_id),
             )
         conn.commit()
