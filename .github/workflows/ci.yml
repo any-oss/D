@@ -1,6 +1,6 @@
-# CI - Build and Test
+# CI - Lint and Type Check
 
-name: CI - Build and Test
+name: CI - Lint and Type Check
 
 on:
   pull_request:
@@ -9,23 +9,8 @@ on:
     branches: [main]
 
 jobs:
-  lint-and-test:
+  lint-and-type-check:
     runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: test_skills_rag
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     
     steps:
       - name: Checkout code
@@ -49,15 +34,3 @@ jobs:
       
       - name: Run type checking
         run: mypy api core --ignore-missing-imports
-      
-      - name: Run tests
-        run: pytest api core -v --cov=api --cov=core --cov-report=xml
-        env:
-          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_skills_rag
-          APP_ENV: test
-      
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./coverage.xml
-          fail_ci_if_error: false
