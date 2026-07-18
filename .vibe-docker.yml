@@ -1,0 +1,5 @@
+image: "anydockerhub/dcontainer"
+tag: "latest"
+dockerfile: "Dockerfile"
+context: "."
+registry: "docker.io"
