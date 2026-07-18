@@ -1,19 +1,14 @@
-# Production Dockerfile for Skills RAG API
-FROM python:3.11-slim
+# Optimized Dockerfile for Termux/Mobile Deployment
+# Single-stage build for simplicity on mobile devices
+FROM python:3.11-alpine
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    postgresql-client \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# Install minimal runtime dependencies (Alpine for small image size)
+RUN apk add --no-cache libffi curl bash
 
-# Copy requirements first for better caching
+# Copy and install Python dependencies
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
@@ -21,18 +16,26 @@ COPY api/ ./api/
 COPY core/ ./core/
 COPY alembic/ ./alembic/
 COPY alembic.ini .
+COPY main.py ./main.py
+COPY entrypoint.sh ./entrypoint.sh
 
-# Create non-root user for security
-RUN useradd --create-home --shell /bin/bash appuser && \
-    chown -R appuser:appuser /app
+# Make entrypoint script executable
+RUN chmod +x /app/entrypoint.sh
+
+# Create non-root user compatible with mobile runtimes
+RUN addgroup -g 1000 appgroup && \
+    adduser -u 1000 -G appgroup -D appuser && \
+    chown -R appuser:appgroup /app
+
 USER appuser
 
 # Expose port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/health/live || exit 1
+# Health check optimized for low-resource devices (Termux/mobile)
+# Reduced retries and longer start-period for slower mobile CPUs
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=2 \
+    CMD curl -f http://localhost:8000/health || exit 1
 
-# Run the application
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Use entrypoint script for proper initialization
+ENTRYPOINT ["/app/entrypoint.sh"]

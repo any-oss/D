@@ -1,20 +1,27 @@
-"""Persistent SQLite Job Queue with WAL Mode"""
+"""LiteQueue - Lightweight Task Queue System
 
+A production-ready, mobile-optimized task queue API built with FastAPI.
+Supports SQLite (Termux/Mobile) and PostgreSQL (Server) deployments.
+"""
 from __future__ import annotations
 
 import json
 import os
 import sqlite3
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any, Dict, Optional, Generator
 
-DB_PATH = "data/job_queue.db"
+# Use unified config storage path
+DB_PATH = str(Path(__file__).resolve().parent.parent / "storage" / "db" / "job_queue.db")
 
 
 def init_queue() -> None:
     """Initialize the persistent job queue with WAL mode."""
-    os.makedirs("data", exist_ok=True)
-
+    # Ensure storage directory exists (critical for Termux/Docker)
+    db_dir = Path(DB_PATH).parent
+    db_dir.mkdir(parents=True, exist_ok=True)
+    
     conn = sqlite3.connect(DB_PATH)
     try:
         conn.execute("PRAGMA journal_mode=WAL")

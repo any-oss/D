@@ -15,7 +15,6 @@ venv/
 ENV/
 .pytest_cache/
 .coverage
-htmlcov/
 coverage.xml
 .mypy_cache/
 
@@ -30,8 +29,10 @@ Dockerfile
 docker-compose*.yml
 .dockerignore
 
-# Documentation
+# Documentation (keep essential deployment docs)
 *.md
+!DEPLOYMENT.md
+!PRODUCTION_READINESS.md
 docs/
 PRODUCTION_CHECKLIST.md
 SETUP_GUIDE.md
@@ -47,5 +48,12 @@ logs/
 # Models (should be mounted as volumes)
 models/
 
-# Database
+# Database (local development - DB is created in container)
 postgres_data/
+storage/db/*.db
+storage/db/*.db-wal
+storage/db/*.db-shm
+
+# Test artifacts
+.trivy-results.sarif
+trivy-results.sarif

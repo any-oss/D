@@ -153,7 +153,12 @@ async def health_check(deep: bool = False):
     }
     
     # Determine overall status
-    statuses = [comp.get("status") for comp in components.values()]
+    statuses = []
+    for comp in components.values():
+        if isinstance(comp, dict):
+            statuses.append(comp.get("status"))
+        else:
+            statuses.append("unhealthy")
     
     if "unhealthy" in statuses:
         overall_status = "unhealthy"
