@@ -1,4 +1,4 @@
-#!/data/data/com.termux/files/usr/bin/python3
+#!/usr/bin/env python3
 """
 main.py — FastAPI application for Team B v1.3.0.
 Features: 
@@ -10,6 +10,8 @@ Features:
 Uses Qwen2.5-0.5b-instruct-q4_k_m.gguf model for optimized performance.
 """
 
+from __future__ import annotations
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 import httpx
@@ -17,7 +19,7 @@ import json
 import time
 import asyncio
 from collections import deque
-from typing import Optional
+from typing import Optional, Dict, Any, List
 
 from core.config import settings
 from api.endpoints import agents as agents_router
@@ -35,7 +37,7 @@ app.include_router(agents_router.router, prefix="/api/v1", tags=["agents"])
 LLAMA_SERVER_URL = f"http://{settings.LLAMA_SERVER_HOST}:{settings.LLAMA_SERVER_PORT}"
 DEFAULT_MODEL = settings.LLAMA_MODEL
 
-MODEL_TASK_MAP: dict[str, list[str]] = {
+MODEL_TASK_MAP: Dict[str, List[str]] = {
     "qwen2.5-0.5b-instruct": [
         "code_generation",
         "refactoring",
@@ -55,52 +57,78 @@ MODEL_TASK_MAP: dict[str, list[str]] = {
 }
 
 BATCH_WINDOW: float = 30.0
-task_queue: deque[dict] = deque()
-last_batch_time: float = time.time()
 
 
-def _best_model(task_type: str) -> str:
-    """Return the best model for a given task type."""
-    return DEFAULT_MODEL
+class TaskQueue:
+    """Thread-safe task queue with batching support."""
+    
+    def __init__(self, batch_window: float = 30.0):
+        self._queue: deque[Dict[str, Any]] = deque()
+        self._batch_window = batch_window
+        self._last_batch_time = time.time()
+        self._lock = asyncio.Lock()
+    
+    async def add_task(self, task_type: str, payload: str) -> int:
+        """Add a task to the queue."""
+        async with self._lock:
+            self._queue.append({
+                "type": task_type,
+                "payload": payload,
+                "arrived": time.time()
+            })
+            return len(self._queue)
+    
+    async def process_batches(self) -> None:
+        """Process batched tasks from the queue."""
+        while True:
+            async with self._lock:
+                elapsed = time.time() - self._last_batch_time
+                if elapsed >= self._batch_window and self._queue:
+                    groups: Dict[str, List[Dict[str, Any]]] = {}
+                    while self._queue:
+                        task = self._queue.popleft()
+                        model = self._best_model(task["type"])
+                        groups.setdefault(model, []).append(task)
+                    for model, tasks in groups.items():
+                        print(f"[BATCH] {model} ← {len(tasks)} tasks")
+                    self._last_batch_time = time.time()
+            await asyncio.sleep(2)
+    
+    @staticmethod
+    def _best_model(task_type: str) -> str:
+        """Return the best model for a given task type."""
+        return DEFAULT_MODEL
+    
+    @property
+    def size(self) -> int:
+        """Get current queue size."""
+        return len(self._queue)
 
 
-async def _process_batch() -> None:
-    """Process batched tasks from the queue."""
-    global last_batch_time
-    while True:
-        elapsed = time.time() - last_batch_time
-        if elapsed >= BATCH_WINDOW and task_queue:
-            groups: dict[str, list[dict]] = {}
-            while task_queue:
-                task = task_queue.popleft()
-                model = _best_model(task["type"])
-                groups.setdefault(model, []).append(task)
-            for model, tasks in groups.items():
-                print(f"[BATCH] {model} ← {len(tasks)} tasks")
-            last_batch_time = time.time()
-        await asyncio.sleep(2)
+# Global task queue instance
+task_queue = TaskQueue(batch_window=BATCH_WINDOW)
 
 
-@app.on_event("startup")
-async def _startup() -> None:
-    """Initialize background tasks on startup."""
-    asyncio.create_task(_process_batch())
-
-
-AGENTS: list[dict[str, str]] = [
+AGENTS: List[Dict[str, str]] = [
     {"name": "qwen-coder", "status": "online"},  # Qwen2.5-0.5b-instruct (All tasks)
     {"name": "qwen-fast", "status": "online"},  # Qwen2.5-0.5b-instruct (Quick tasks)
 ]
 
 
+@app.on_event("startup")
+async def _startup() -> None:
+    """Initialize background tasks on startup."""
+    asyncio.create_task(task_queue.process_batches())
+
+
 @app.get("/health")
-async def health() -> dict[str, str]:
+async def health() -> Dict[str, str]:
     """Health check endpoint."""
-    return {"status": "ok", "version": "1.2.0"}
+    return {"status": "ok", "version": "1.3.0"}
 
 
 @app.get("/router/status")
-async def router_status() -> dict[str, list[dict[str, str]]]:
+async def router_status() -> Dict[str, List[Dict[str, str]]]:
     """Get router/agent status."""
     return {"agents": AGENTS}
 
@@ -112,16 +140,16 @@ async def router_reassign() -> JSONResponse:
 
 
 @app.post("/tasks/retry_failed")
-async def retry_failed() -> dict[str, int]:
+async def retry_failed() -> Dict[str, int]:
     """Retry failed tasks."""
     return {"retried": 0}
 
 
 @app.post("/task")
-async def submit_task(task_type: str, payload: str) -> dict[str, int]:
+async def submit_task(task_type: str, payload: str) -> Dict[str, int]:
     """Submit a task to the queue."""
-    task_queue.append({"type": task_type, "payload": payload, "arrived": time.time()})
-    return {"queued": len(task_queue)}
+    queued_count = await task_queue.add_task(task_type, payload)
+    return {"queued": queued_count}
 
 
 @app.post("/generate")

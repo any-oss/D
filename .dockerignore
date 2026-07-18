@@ -1,0 +1,59 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.env
+.venv
+env/
+venv/
+ENV/
+.pytest_cache/
+.coverage
+coverage.xml
+.mypy_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Documentation (keep essential deployment docs)
+*.md
+!DEPLOYMENT.md
+!PRODUCTION_READINESS.md
+docs/
+PRODUCTION_CHECKLIST.md
+SETUP_GUIDE.md
+README_*.md
+
+# Monitoring (local development)
+monitoring/
+
+# Logs
+logs/
+*.log
+
+# Models (should be mounted as volumes)
+models/
+
+# Database (local development - DB is created in container)
+postgres_data/
+storage/db/*.db
+storage/db/*.db-wal
+storage/db/*.db-shm
+
+# Test artifacts
+.trivy-results.sarif
+trivy-results.sarif
