@@ -1,9 +1,41 @@
 # Production Docker Compose Configuration
-# Includes: API, PostgreSQL, Prometheus, and monitoring stack
+# Includes: API, PostgreSQL, Prometheus, Grafana, and llama.cpp (llama-server)
+# Optimized for Qwen2.5-0.5b-instruct-q4_k_m.gguf model
 
 version: '3.8'
 
 services:
+  # llama-server (llama.cpp) for optimized inference
+  llama-server:
+    image: ghcr.io/ggerganov/llama.cpp:server
+    container_name: skills-rag-llama-server
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - MODEL=/models/${LLAMA_MODEL:-Qwen2.5-0.5b-instruct-q4_k_m.gguf}
+      - HOST=0.0.0.0
+      - PORT=8080
+    volumes:
+      - ./models:/models:ro
+    command: ["--model", "/models/Qwen2.5-0.5b-instruct-q4_k_m.gguf", "--host", "0.0.0.0", "--port", "8080", "-c", "4096", "-t", "4", "--n-gpu-layers", "0"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - skills-network
+    # Optional: Uncomment for GPU acceleration
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
   api:
     build:
       context: .
@@ -20,8 +52,13 @@ services:
       - LOG_FORMAT=json
       - LOG_LEVEL=INFO
       - PROMETHEUS_ENABLED=true
+      - LLAMA_SERVER_HOST=llama-server
+      - LLAMA_SERVER_PORT=8080
+      - LLAMA_MODEL=Qwen2.5-0.5b-instruct-q4_k_m.gguf
     depends_on:
       db:
+        condition: service_healthy
+      llama-server:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]

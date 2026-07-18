@@ -1,46 +1,45 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
+```
+# Environment files
 .env
+.env.local
+.env.*
+
+# Dependencies
+node_modules/
 .venv/
-env/
 venv/
-ENV/
-*.egg-info/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.julia/
+zig*/
+
+# Build artifacts
 dist/
 build/
+target/
+*.pyc
+*.class
+*.o
+*.obj
+*.out
 
-# IDE
-.idea/
+# Editors/IDE
 .vscode/
+.idea/
 *.swp
 *.swo
-*~
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-
-# Logs
+# Logs and temp files
 *.log
-logs/
+*.tmp
 
-# Database
-*.db
-*.sqlite3
+# Coverage
+coverage/
+htmlcov/
+.coverage
 
-# Models
-models/*.bin
-models/*.pt
-
-# OS
+# System files
 .DS_Store
 Thumbs.db
-
-# Docker
-docker-compose.override.yml
+```
