@@ -93,13 +93,17 @@ class SkillsAgent(BaseSubAgent):
             if "list" in instruction.lower():
                 return list(self._skills_cache.keys())
             elif "get" in instruction.lower():
-                skill_name = kwargs.get("skill_name")
+                skill_name: Optional[str] = kwargs.get("skill_name")
+                if skill_name is None:
+                    return {"error": "Skill name required"}
                 return self._skills_cache.get(skill_name, {"error": "Skill not found"})
             elif "register" in instruction.lower():
-                skill_name = kwargs.get("name")
+                skill_name: Optional[str] = kwargs.get("name")  # type: ignore[no-redef]
                 skill_data = kwargs.get("data", {})
-                self._skills_cache[skill_name] = skill_data
-                return {"status": "registered", "skill": skill_name}
+                if skill_name is not None:
+                    self._skills_cache[skill_name] = skill_data
+                    return {"status": "registered", "skill": skill_name}
+                return {"error": "Skill name required"}
             else:
                 return {"error": "Unknown skills operation"}
         finally:
@@ -207,13 +211,15 @@ class HeartbeatAgent(BaseSubAgent):
                 }
             
             elif "record" in instruction_lower:
-                metric_name = kwargs.get("name")
+                metric_name: Optional[str] = kwargs.get("name")
                 value = kwargs.get("value")
-                self._metrics[metric_name] = {
-                    "value": value,
-                    "timestamp": datetime.utcnow()
-                }
-                return {"status": "recorded", "metric": metric_name}
+                if metric_name is not None:
+                    self._metrics[metric_name] = {
+                        "value": value,
+                        "timestamp": datetime.utcnow()
+                    }
+                    return {"status": "recorded", "metric": metric_name}
+                return {"error": "Metric name required"}
             
             elif "alert" in instruction_lower:
                 alert_level = kwargs.get("level", "info")
