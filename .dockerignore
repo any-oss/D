@@ -1,0 +1,51 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.env
+.venv
+env/
+venv/
+ENV/
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+.mypy_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Documentation
+*.md
+docs/
+PRODUCTION_CHECKLIST.md
+SETUP_GUIDE.md
+README_*.md
+
+# Monitoring (local development)
+monitoring/
+
+# Logs
+logs/
+*.log
+
+# Models (should be mounted as volumes)
+models/
+
+# Database
+postgres_data/

@@ -1,0 +1,63 @@
+# CI - Build and Test
+
+name: CI - Build and Test
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_skills_rag
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Run linters
+        run: |
+          flake8 api core --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 api core --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      
+      - name: Run type checking
+        run: mypy api core --ignore-missing-imports
+      
+      - name: Run tests
+        run: pytest api core -v --cov=api --cov=core --cov-report=xml
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_skills_rag
+          APP_ENV: test
+      
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
