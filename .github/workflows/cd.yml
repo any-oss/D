@@ -6,8 +6,10 @@ on:
     branches: [main]
     tags:
       - 'v*.*.*'
-  pull_request:
-    branches: [main]
+  # Disabled for pull requests to prevent failures due to missing secrets
+  # and to ensure images are only pushed from trusted main branch
+  # pull_request:
+  #   branches: [main]
 
 jobs:
   call-docker-build:
@@ -16,7 +18,7 @@ jobs:
     with:
       registry: docker.io
       image_name: anydockerhub/dcontainer
-      platforms: linux/amd64,linux/arm64
+      platforms: linux/amd64,linux/arm64,linux/arm/v7
       push: ${{ github.event_name != 'pull_request' }}
       scan_image: ${{ github.event_name != 'pull_request' }}
       tags: |

@@ -78,7 +78,8 @@ def enqueue(topic: str, payload: Dict[str, Any]) -> int:
             (topic, json.dumps(payload)),
         )
         conn.commit()
-        return cur.lastrowid
+        lastrowid = cur.lastrowid
+        return int(lastrowid) if lastrowid is not None else 0
 
 
 def dequeue(topic: str) -> Optional[Dict[str, Any]]:
