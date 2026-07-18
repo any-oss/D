@@ -6,7 +6,6 @@ Supports SQLite (Termux/Mobile) and PostgreSQL (Server) deployments.
 from __future__ import annotations
 
 import json
-import os
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
@@ -21,7 +20,7 @@ def init_queue() -> None:
     # Ensure storage directory exists (critical for Termux/Docker)
     db_dir = Path(DB_PATH).parent
     db_dir.mkdir(parents=True, exist_ok=True)
-    
+
     conn = sqlite3.connect(DB_PATH)
     try:
         conn.execute("PRAGMA journal_mode=WAL")
@@ -47,9 +46,10 @@ def init_queue() -> None:
 
 
 @contextmanager
+
 def get_db() -> Generator[sqlite3.Connection, None, None]:
     """Get database connection with WAL mode enabled.
-    
+
     Yields:
         sqlite3.Connection: Database connection object
     """
@@ -63,11 +63,11 @@ def get_db() -> Generator[sqlite3.Connection, None, None]:
 
 def enqueue(topic: str, payload: Dict[str, Any]) -> int:
     """Add a task to the queue.
-    
+
     Args:
         topic: Task topic/queue name
         payload: Task payload dictionary
-    
+
     Returns:
         int: ID of the newly created job
     """
@@ -84,10 +84,10 @@ def enqueue(topic: str, payload: Dict[str, Any]) -> int:
 
 def dequeue(topic: str) -> Optional[Dict[str, Any]]:
     """Fetch next pending task for a specific agent skill range.
-    
+
     Args:
         topic: Topic/queue name to dequeue from
-    
+
     Returns:
         Dictionary with job id and payload, or None if no jobs available
     """
@@ -95,8 +95,8 @@ def dequeue(topic: str) -> Optional[Dict[str, Any]]:
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT id, payload FROM jobs 
-            WHERE topic = ? AND status = 'pending' 
+            SELECT id, payload FROM jobs
+            WHERE topic = ? AND status = 'pending'
             ORDER BY created_at ASC LIMIT 1
         """,
             (topic,),
@@ -114,7 +114,7 @@ def dequeue(topic: str) -> Optional[Dict[str, Any]]:
 
 def complete_job(job_id: int, success: bool, error: Optional[str] = None) -> None:
     """Mark job as done or failed.
-    
+
     Args:
         job_id: ID of the job to complete
         success: True if job succeeded, False if failed
@@ -129,8 +129,8 @@ def complete_job(job_id: int, success: bool, error: Optional[str] = None) -> Non
             )
         else:
             cur.execute(
-                """UPDATE jobs SET status = 'failed', 
-                   error_msg = ?, processed_at = strftime('%s', 'now'), 
+                """UPDATE jobs SET status = 'failed',
+                   error_msg = ?, processed_at = strftime('%s', 'now'),
                    retry_count = retry_count + 1 WHERE id = ?""",
                 (error, job_id),
             )
